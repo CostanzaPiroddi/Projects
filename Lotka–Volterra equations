@@ -1,0 +1,45 @@
+clc
+clear
+%Exercise 6
+%Solving the Lotka-Volterra Equations 
+
+%Initial Data
+alpha = 0.2; beta = 0.01; delta = 0.07; gamma = 0.004;
+
+xzero = 19; yzero = 22; 
+
+tzero = 0;T = 300;
+
+h = 1e-3;
+
+%The pair equations we need to solve
+f = @(x,y) y*(gamma*x - delta);
+g = @(x,y) x*(alpha - beta*y);
+x(1) = xzero;
+y(1) = yzero;
+
+N = (T - tzero)/h;
+tvect = linspace(tzero,T,N+1);
+
+%We use 4th-order Runge-Kutta method
+for i = 1:N
+        k1y = f(x(i),y(i));
+        k1x = g(x(i),y(i));
+        k2y = f(x(i) + h*k1x/2,y(i) + h*k1y/2);
+        k2x = g(x(i) + h*k1x/2,y(i) + h*k1y/2);
+        k3y = f(x(i) + h*k2x/2,y(i) + h*k2y/2);
+        k3x = g(x(i) + h*k2x/2,y(i) + h*k2y/2);
+        k4y = f(x(i) + h*k3x,y(i) + h*k3y);
+        k4x = g(x(i) + h*k3x,y(i) + h*k3y);
+
+        y(i+1) = y(i) + h*(k1y + 2*k2y + 2*k3y + k4y)/6;
+        x(i+1) = x(i) + h*(k1x + 2*k2x + 2*k3x + k4x)/6;
+end
+
+%Plotting 
+figure(1)
+hold on
+plot(tvect,x,'m-')
+plot(tvect,y,'c-')
+legend('Prey','Predator')
+hold off
