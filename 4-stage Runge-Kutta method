@@ -1,0 +1,41 @@
+clc
+clear
+%Exercise 2
+%4-stage Runge-Kutta Method to solve ODE
+%Initial conditions
+T = 2;
+%Solving the requested ODE
+f = @(y)-10*y.^2;
+y(1) = 1;
+%Timesteps
+h = [2^(-5) 2^(-6) 2^(-7) 2^(-8) 2^(-9) 2^(-10)];
+l=1;
+%Exact solution
+Exactsol = @(t) 1./(1+10*t);
+
+for hl = h
+    tvect = 0:hl:T;
+    Exacty = Exactsol(tvect);
+    N = T/hl;
+    
+    %4th order Runge-Kutta
+    yr(1) = y(1);
+    for i = 1:N
+        k1 = f(yr(i));
+        k2 = f(yr(i) + hl*k1/2);
+        k3 = f(yr(i) + hl*k2/2);
+        k4 = f(yr(i) + hl*k3);
+        yr(i+1) = yr(i) + hl*(k1 + 2*k2 + 2*k3 + k4)/6;
+    end
+
+    Error(l) = abs(Exacty(end) - yr(end));
+
+    l=l+1;
+
+end
+timesteps = T./h;
+%Plotting the Errore 
+figure(1)
+loglog(timesteps,Error,'go-');
+xlabel('log(Number of Timesteps)');
+ylabel('log(Error)');
