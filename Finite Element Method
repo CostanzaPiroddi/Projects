@@ -1,0 +1,251 @@
+clear
+%Homework 3
+color = ["b-" "m-" "g-" "r-" "c-"];
+for s = 1:5
+
+    index = s-1;
+    %Input Data
+    nc = load(sprintf('mesh%i.coord',index));
+    nt = load(sprintf('mesh%i.topol',index));
+    nb = load(sprintf('mesh%i.bound',index));
+
+    N = size(nc,1); %number of nodes
+    M = size(nt,1); %number of triangles
+
+    figure(1) %representing nodes
+    scatter(nc(:,1),nc(:,2));
+    hold on
+
+    r = 1:M;
+
+    row = repelem(r,3); 
+    col = reshape(nt',[1,3*M]);
+
+    A = sparse(row,col,0);
+
+    %Pattern of H
+    H = A'*A;
+
+    %Computation of local stiffness matrices and their assembly
+    delta = zeros(M,1);
+
+for i = 1:M
+
+    Hloc = zeros(3);
+
+    n1 = nt(i,1);
+    n2 = nt(i,2);
+    n3 = nt(i,3);
+
+    x = [nc(n1,1) nc(n2,1) nc(n3,1)];
+    y = [nc(n1,2) nc(n2,2) nc(n3,2)];
+
+    T = [1 x(1) y(1); 1 x(2) y(2); 1 x(3) y(3)];
+
+    delta(i,1) = (1/2)*det(T);
+
+    b = [(y(2) - y(3)) (y(3) - y(1)) (y(1) - y(2))];
+    c = [(x(3) - x(2)) (x(1) - x(3)) (x(2) - x(1))];
+
+    for k=1:3
+       for j = 1:3
+    Hloc(k,j) = 1/(4*delta(i,1))*(b(k)*b(j)+c(k)*c(j));
+       end
+    end
+
+    for k = 1:3
+        row = nt(i,k);
+        for j = 1:3
+            col = nt(i,j);
+            H(row,col) = H(row,col) + Hloc(k,j);
+        end
+    end
+end
+
+%Computation of the right-hand side
+
+f = zeros(N,1);
+sur = zeros(N,1);
+
+for i=1:N
+    sur(i,1) = 0;
+    for k=1:M
+        if nt(k,1) == i || nt(k,2) == i || nt(k,3) == i
+            sur(i,1) = sur(i,1) + delta(k,1);
+        end
+    end
+f(i,1) = (-4 + 2*nc(i,1)^2 + 2*nc(i,2)^2)*(1/3)*sur(i,1);
+end
+
+%Boundary conditions enforcement
+
+ G = size(nb,1);
+
+ dir = nb(:,1);
+
+ R = 1e15;
+
+for i = 1:G
+
+    j = dir(i);
+
+    H(j,j) = R;
+
+    f(j,1) = 0;
+end
+
+%Linear system solution
+
+L = ichol(H);
+
+ustab = @(x,y) x.^2 + y.^2 - x.^2.*y.^2 - 1;
+
+tol = 1e-8;
+
+maxit=500;
+
+[u,flag,relres,iter,resvec] = pcg(H,f,tol,maxit,L,L');
+
+Ec(s) = sqrt(sum(((u-ustab(nc(:,1),nc(:,2))).^2).*(sur./3)));
+
+
+figure(2)
+title('Cholesky Preconditioner');
+semilogy((1:iter),resvec(2:iter+1),color(s))
+hold on
+grid on
+
+end
+
+xlabel("iterations");
+ylabel("log(resvec)");
+legend("mesh0","mesh1","mesh2","mesh3","mesh4")
+
+for i=1:4
+    ratioc(i) = Ec(i+1)/Ec(i);
+end
+  
+ratioc
+
+
+%%
+
+for s = 1:5
+
+    index = s-1;
+    %Input Data
+    nc = load(sprintf('mesh%i.coord',index));
+    nt = load(sprintf('mesh%i.topol',index));
+    nb = load(sprintf('mesh%i.bound',index));
+
+    N = size(nc,1); %number of nodes
+    M = size(nt,1); %number of triangles
+
+    r = 1:M;
+
+    row = repelem(r,3); 
+    col = reshape(nt',[1,3*M]);
+
+    A = sparse(row,col,0);
+
+    %Pattern of H
+    H = A'*A;
+
+    %Computation of local stiffness matrices and their assembly
+    delta = zeros(M,1);
+
+for i = 1:M
+
+    Hloc = zeros(3);
+
+    n1 = nt(i,1);
+    n2 = nt(i,2);
+    n3 = nt(i,3);
+
+    x = [nc(n1,1) nc(n2,1) nc(n3,1)];
+    y = [nc(n1,2) nc(n2,2) nc(n3,2)];
+
+    T = [1 x(1) y(1); 1 x(2) y(2); 1 x(3) y(3)];
+
+    delta(i,1) = (1/2)*det(T);
+
+    b = [(y(2) - y(3)) (y(3) - y(1)) (y(1) - y(2))];
+    c = [(x(3) - x(2)) (x(1) - x(3)) (x(2) - x(1))];
+
+    for k=1:3
+       for j = 1:3
+    Hloc(k,j) = 1/(4*delta(i,1))*(b(k)*b(j)+c(k)*c(j));
+       end
+    end
+
+    for k = 1:3
+        row = nt(i,k);
+        for j = 1:3
+            col = nt(i,j);
+            H(row,col) = H(row,col) + Hloc(k,j);
+        end
+    end
+end
+
+%Computation of the right-hand side
+f = zeros(N,1);
+sur = zeros(N,1);
+
+for i=1:N
+    sur(i,1) = 0;
+    for k=1:M
+        if nt(k,1) == i || nt(k,2) == i || nt(k,3) == i
+            sur(i,1) = sur(i,1) + delta(k,1);
+        end
+    end
+f(i,1) = (-4 + 2*nc(i,1)^2 + 2*nc(i,2)^2)*(1/3)*sur(i,1);
+end
+
+%Boundary conditions enforcement
+
+ G = size(nb,1);
+
+ dir = nb(:,1);
+
+ R = 1e15;
+
+for i = 1:G
+
+    j = dir(i);
+
+    H(j,j) = R;
+
+    f(j,1) = 0;
+end
+
+%Linear system solution
+
+J = diag(diag(H));
+
+tol = 1e-8;
+
+ustab = @(x,y) x.^2 + y.^2 - x.^2.*y.^2 - 1;
+
+maxit=500;
+
+[u,flag,relres,iter,resvec] = pcg(H,f,tol,maxit,J);
+
+Ej(s) = sqrt(sum(((u-ustab(nc(:,1),nc(:,2))).^2).*(sur./3)));
+
+figure(4)
+title('Jacobi Preconditioner');
+semilogy((1:iter),resvec(2:iter+1),color(s))
+hold on
+grid on
+
+end
+
+xlabel("iterations");
+ylabel("log(resvec)");
+legend("mesh0","mesh1","mesh2","mesh3","mesh4")
+
+for i=1:4
+    ratioj(i) = Ej(i+1)/Ej(i);
+end
+  
+ratioj
