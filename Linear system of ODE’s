@@ -1,0 +1,117 @@
+clear
+%Exercise 5
+%Initial data
+nx = 100;
+G = numgrid('S',nx);
+A = (delsq(G)*(nx-1)^2);
+lambda = -eigs(A,1,'lm');
+
+%Computing interval of absolute stability
+RK4 = @(y) (1 + y + 1/2*y.^2 + 1/6*y.^3 + 1/24*y.^4) - 1;
+RK4zero = fzero(RK4, -2.78);
+maxint = RK4zero/(lambda);
+
+tzero = 0;
+T = 0.1;
+tspan = [tzero,T];
+
+f = @(y,A) -A*y;
+yzero = ones(length(A),1);
+
+Exactsol = load('accurate_solution.txt','r');
+%Exacty = exp(-0.1*A)*yzero;
+
+%Solving the problem by Ode45
+tin = tic;
+options = odeset('RelTol',1e-06,'AbsTol',1e-08);
+[t,y] = ode45(@(t,y) f(y,A), tspan, yzero,options);
+tfin = toc(tin);
+
+CPUtime = tfin; 
+Nsteps = length(t);
+Diff = abs(y(end,:)'- Exactsol);
+Err45 = max(Diff);
+FirstRun=["First Run", "ode45", Nsteps, Err45, CPUtime];
+display(FirstRun);
+
+%Using Crank Nicolson
+h = [1e-03 1e-04 1e-05];
+
+j=1;
+
+for hi=h
+A1 = (speye(length(A))+0.5*hi*A);
+N = round(0.1/hi);
+yc = zeros(length(A),N+1);
+yc(:,1)=yzero;
+tin = tic;
+
+    for i=1:N
+        A2 = (speye(length(A))-0.5*hi*A)*yc(:,i);
+        [yc(:,i+1), flag]= pcg(A1, A2, hi^(3),500);
+    end
+
+tfin = toc(tin);
+CPUtimec(j) = tfin;
+Nstepsc(j) = N;
+
+ystart2(:,j)=yc(:,2);
+ystart3(:,j)=yc(:,3);
+
+%Error CN
+Diffc = abs(yc(:,end)-Exactsol);
+ErrorCN(j) = max(Diffc);
+j=j+1;
+end
+
+SecondRun = ["Second Run", "Cranck Nicolson", Nstepsc(1), ErrorCN(1), CPUtimec(1)];
+ThirdRun = ["Third Run", "Cranck Nicolson", Nstepsc(2), ErrorCN(2), CPUtimec(2)];
+FourthRun = ["Fourth Run", "Cranck Nicolson", Nstepsc(3), ErrorCN(3), CPUtimec(3)];
+
+display(SecondRun);
+display(ThirdRun);
+display(FourthRun);
+
+%Using BDF3
+h = [1e-03 1e-04 1e-05];
+
+j=1;
+
+for hi=h
+N = round(0.1/hi);
+A3 = (speye(length(A))+(6/11)*hi*A);
+yb = zeros(length(A),N+1);
+
+yb(:,1)=yzero;
+yb(:,2)=ystart2(:,j);
+yb(:,3)=ystart3(:,j);
+
+tin = tic;
+
+    for i=1:N-2
+        A4 = +(18/11)*yb(:,i+2)-(9/11)*yb(:,i+1)+(2/11)*yb(:,i);
+        [yb(:,i+3), flag]= pcg(A3, A4, hi^(3), 500);
+    end
+
+tfin = toc(tin);
+CPUtimeb(j) = tfin;
+Nstepsb(j) = N;
+
+%Error BDF3
+Diffb = abs(yb(:,end)-Exactsol);
+ErrorBDF3(j) = max(Diffb);
+    j=j+1;
+end
+
+FifthRun = ["Fifth Run", "BDF3", Nstepsb(1), ErrorBDF3(1), CPUtimeb(1)];
+SixthRun = ["Sixth Run", "BDF3", Nstepsb(2), ErrorBDF3(2), CPUtimeb(2)];
+SeventhRun = ["Seventh Run", "BDF3", Nstepsb(3), ErrorBDF3(3), CPUtimeb(3)];
+
+display(FifthRun);
+display(SixthRun);
+display(SeventhRun);
+
+%% Final table
+head=["RUN", "METHOD", "NUMBER OF STEPS", "ERROR", "CPU TIME"];
+TABLE = [head; FirstRun; SecondRun; ThirdRun; FourthRun; FifthRun; SixthRun; SeventhRun];
+display(TABLE);
