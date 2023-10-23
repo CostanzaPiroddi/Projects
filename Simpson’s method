@@ -1,0 +1,30 @@
+clc
+clear
+%Exercise 1
+%Initial conditions
+T = 10;
+h = 0.02;
+N = T/h;
+%The ODE we need to solve
+f = @(y)-5*y;
+y(1) = 1; 
+tv = linspace(0,T,N+1);
+%Exact solution
+Exactsol = @(t) exp(-5*t);
+Exacty = Exactsol(tv);
+%Simpson method with Forward Euler
+yf(1) = y(1);
+yf(2) = yf(1) + h*f(yf(1));
+for i = 1:(N-1)
+    yf(i+2) = fzero(@(x) x - yf(i) - (h/3)*(f(yf(i))+4*f(yf(i+1))+f(x)), yf(i)); 
+end
+% Simpson's method with 4th order Runge Kutta method
+yr(1) = y(1);
+k1 = f(yr(1));
+k2 = f(yr(1) + h*k1/2);
+k3 = f(yr(1) + h*k2/2);
+k4 = f(yr(1) + h*k3);
+yr(2) = yr(1) + h*(k1 + 2*k2 + 2*k3 + k4)/6;
+for i = 1:(N-1)
+    yr(i+2) = fzero(@(x) x - yr(i) - (h/3)*(f(yr(i))+4*f(yr(i+1))+f(x)), yr(i)); 
+end
